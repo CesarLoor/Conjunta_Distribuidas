@@ -54,82 +54,45 @@ public class ClienteService {
                     deuda.setPlazoMeses(d.getPlazoMeses());
                     return deuda;
                 })
-                .collect(Collectors.toList())
-        );
+                .collect(Collectors.toList()));
 
-        clienteRepository.save(cliente);
+        // 2️⃣ Evaluar el riesgo
+        ResultadoEvaluacion resultado = evaluarRiesgoCliente(cliente);
 
-        // 2️⃣ Calcular puntaje final y nivel real
-        int puntajeFinal = calcularPuntajeFinal(cliente);
-        String nivelRiesgo = determinarNivelRiesgo(puntajeFinal);
-
-        // 3️⃣ Seleccionar el evaluador final según nivel real
-        EvaluadorRiesgo evaluadorFinal = switch (nivelRiesgo) {
-            case "BAJO" -> new EvaluadorRiesgoBajo();
-            case "MEDIO" -> new EvaluadorRiesgoMedio();
-            default -> new EvaluadorRiesgoAlto();
-        };
-
-        // 4️⃣ Generar resultado final (usando evaluador final)
-        ResultadoEvaluacion resultado = evaluadorFinal.evaluar(cliente);
-        resultado.setPuntajeFinal(puntajeFinal);
-
-        // 5️⃣ Guardar historial
+        // 3️⃣ Guardar en base de datos
+        cliente = clienteRepository.save(cliente);
+        
+        // 4️⃣ Guardar en el historial
         HistorialEvaluacion historial = new HistorialEvaluacion();
         historial.setCliente(cliente);
-        historial.setClienteNombre(cliente.getNombre());
-        historial.setTipoCliente(dto.getTipoCliente());
-        historial.setMontoSolicitado(cliente.getMontoSolicitado());
-        historial.setPlazoEnMeses(cliente.getPlazoEnMeses());
+        historial.setMontoSolicitado(dto.getMontoSolicitado());
+        historial.setPlazoEnMeses(dto.getPlazoEnMeses());
         historial.setNivelRiesgo(resultado.getNivelRiesgo());
         historial.setAprobado(resultado.isAprobado());
         historial.setFechaConsulta(LocalDateTime.now());
-
         historialRepository.save(historial);
 
-        // 6️⃣ Preparar DTO de respuesta
-        ResultadoEvaluacionDTO response = new ResultadoEvaluacionDTO();
-        response.setNivelRiesgo(resultado.getNivelRiesgo());
-        response.setAprobado(resultado.isAprobado());
-        response.setPuntajeFinal(puntajeFinal);
-        response.setMensaje(resultado.getMensaje());
-        response.setTasaInteres(resultado.getTasaInteres());
-        response.setPlazoAprobado(resultado.getPlazoAprobado());
-
-        return response;
+        // 5️⃣ Retornar el DTO de resultado
+        return convertirAResultadoDTO(resultado);
     }
 
-    private int calcularPuntajeFinal(Cliente cliente) {
-        int puntaje = 100;
-
-        // Penalización por puntaje crediticio
-        if (cliente.getPuntajeCrediticio() < 650) {
-            puntaje -= 30;
-        }
-
-        double ingreso = cliente.getIngresoReferencial();
-        double deuda = cliente.getMontoDeudas();
-        double montoSolicitado = cliente.getMontoSolicitado();
-
-        if (cliente instanceof PersonaNatural) {
-            if (deuda / ingreso > 0.4) puntaje -= 15;
-            if (montoSolicitado / ingreso > 0.5) puntaje -= 10;
-        } else if (cliente instanceof PersonaJuridica) {
-            if (deuda / ingreso > 0.35) puntaje -= 20;
-            if (montoSolicitado / ingreso > 0.3) puntaje -= 15;
-        }
-
-        return puntaje;
+    private ResultadoEvaluacion evaluarRiesgoCliente(Cliente cliente) {
+        return evaluadores.stream()
+                .filter(evaluador -> evaluador.aplica(cliente))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No se pudo evaluar el riesgo del cliente"))
+                .evaluar(cliente);
     }
 
-    private String determinarNivelRiesgo(int puntaje) {
-        if (puntaje >= 80) {
-            return "BAJO";
-        } else if (puntaje >= 60) {
-            return "MEDIO";
-        } else {
-            return "ALTO";
-        }
+    private ResultadoEvaluacionDTO convertirAResultadoDTO(ResultadoEvaluacion resultado) {
+        ResultadoEvaluacionDTO dto = new ResultadoEvaluacionDTO();
+        dto.setNivelRiesgo(resultado.getNivelRiesgo());
+        dto.setAprobado(resultado.isAprobado());
+        dto.setPuntajeFinal(resultado.getPuntajeFinal());
+        dto.setMensaje(resultado.getMensaje());
+        dto.setTasaInteres(resultado.getTasaInteres());
+        dto.setPlazoAprobado(resultado.getPlazoAprobado());
+        return dto;
     }
 
     public List<HistorialEvaluacionDTO> obtenerHistorial(Long clienteId) {
