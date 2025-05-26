@@ -1,11 +1,11 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/bd-demo
+    url: jdbc:postgresql://localhost:5432/db-demo
     username: postgres
-    password: taco
+    password: postgres
   jpa:
     hibernate:
-      ddl-auto: update #create-drop
+      ddl-auto: update
     properties:
       hibernate:
         show_sql: true
