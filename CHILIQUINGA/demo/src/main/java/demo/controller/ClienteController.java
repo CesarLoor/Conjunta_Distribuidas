@@ -5,6 +5,7 @@ import demo.dto.ResultadoEvaluacionDTO;
 import demo.dto.HistorialEvaluacionDTO;
 import demo.service.ClienteService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,12 +18,12 @@ public class ClienteController {
     private final ClienteService clienteService;
 
     @PostMapping("/evaluar-riesgo")
-    public ResultadoEvaluacionDTO evaluarRiesgo(@RequestBody ClienteRequestDTO dto) {
-        return clienteService.evaluarRiesgo(dto);
+    public ResponseEntity<ResultadoEvaluacionDTO> evaluarRiesgo(@RequestBody ClienteRequestDTO dto) {
+        return ResponseEntity.ok(clienteService.evaluarRiesgo(dto));
     }
 
     @GetMapping("/historial/{idCliente}")
-    public List<HistorialEvaluacionDTO> obtenerHistorial(@PathVariable Long idCliente) {
-        return clienteService.obtenerHistorial(idCliente);
+    public ResponseEntity<List<HistorialEvaluacionDTO>> obtenerHistorial(@PathVariable Long idCliente) {
+        return ResponseEntity.ok(clienteService.obtenerHistorial(idCliente));
     }
 }
