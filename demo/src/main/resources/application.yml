@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bd-demo
+    username: postgres
+    password: taco
+  jpa:
+    hibernate:
+      ddl-auto: update #create-drop
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+        use_sql_comments: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: 8000
